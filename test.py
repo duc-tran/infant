@@ -65,13 +65,15 @@ def algorithm(model, profile):
 
     temporal_filtering = rse.temporal_filter()
 
+    previous_left_wrist = []
+    previous_right_wrist = []
+    distances = ''
+
     try:
-        frameIndex = 1
+        frame_index = 1
         while True:
             # if we have multicam, consider changing to poll_for_frames
             frames = pipe.wait_for_frames()
-            print('frames size 1: ', frames.size)
-            print('frames size 2: ', frames.__len__)
             color_frame = frames.get_color_frame()
 
             color = np.asanyarray(color_frame.get_data())
@@ -93,8 +95,9 @@ def algorithm(model, profile):
                                                   joints_color_palette='gist_rainbow', skeleton_color_palette='jet',
                                                   joints_palette_samples=1)
 
-                print('\nFrame number: ', frameIndex)
-                frameIndex += 1
+                print('\nFrame number: ', frame_index)
+                frame_index += 1
+
                 # Each joint has 3 values: 2 -> 1 -> 0 (joint confidence, y position, x position)
                 print('Left Shoulder: ', points[0, 2] * 100, points[0, 1], points[0, 0])
                 print('Right Shoulder: ', points[1, 2] * 100, points[1, 1], points[1, 0])
@@ -133,19 +136,30 @@ def algorithm(model, profile):
                                       int(round(points[2, 0], 0)), int(round(points[2, 1], 0)),
                                       aligned_depth, depth_aligned_intrin, depth_scale)
 
+
                         if (length != None):
                             ls_le.append(length)
 
                     # if (int(round(pt[2, 0], 0)) < p[0]) and (int(round(pt[2, 1], 0)) < p[1])
                     # and (int(round(pt[4, 0], 0)) < p[0]) and (int(round(pt[4, 1], 0)) < p[1]):
                     if (points[2, 2] > confidence) and (points[4, 2] > confidence):
-                        print("Left Elbow to Left Wrist length: ")
                         length = calc(int(round(points[2, 0], 0)), int(round(points[2, 1], 0)),
                                       int(round(points[4, 0], 0)), int(round(points[4, 1], 0)),
                                       aligned_depth, depth_aligned_intrin, depth_scale)
 
                         if (length != None):
                             le_lw.append(length)
+
+                    if points[4, 2] > confidence:
+                        if len(previous_left_wrist) != 0:
+                            left_wrist_movement = calc(int(round(points[4, 0], 0)), int(round(points[4, 1], 0)),
+                                                       int(round(previous_left_wrist[0], 0)), int(round(points[0, 1], 0)),
+                                                       aligned_depth, depth_aligned_intrin, depth_scale)
+                            distances += 'left movement from frame' + str(frame_index - 1) + ' to frame ' \
+                                         + str(frame_index) + ' ' + str(left_wrist_movement) + 'cm ' + str(points[4, 2]) + '\n'
+                            print('previous left wrist1: ', previous_left_wrist)
+                        previous_left_wrist = points[4, :]
+                        print('previous left wrist0: ', previous_left_wrist)
 
                     # if (int(round(pt[1, 0], 0) < p[0])) and (int(round(pt[1, 1], 0)) < p[1])
                     # and (int(round(pt[3, 0], 0)) < p[0]) and (int(round(pt[3, 1], 0)) < p[1]):
@@ -176,6 +190,17 @@ def algorithm(model, profile):
                         lw = lw + points[4, 2]
                         rw = rw + points[5, 2]
 
+                    if points[5, 2] > confidence:
+                        if len(previous_right_wrist) != 0:
+                            right_wrist_movement = calc(int(round(points[5, 0], 0)), int(round(points[5, 1], 0)),
+                                                       int(round(previous_right_wrist[0], 0)),
+                                                       int(round(points[0, 1], 0)),
+                                                       aligned_depth, depth_aligned_intrin, depth_scale)
+                            distances += 'right movement from frame' + str(frame_index - 1) + ' to frame ' \
+                                         + str(frame_index) + ' ' + str(right_wrist_movement) + 'cm ' + str(points[5, 2]) + '\n'
+                        previous_right_wrist = points[5, :]
+                        print('previous right wrist: ', previous_right_wrist)
+
             cv2.imshow('Output Frame', color)
             cv2.waitKey(1) & 0xFF
             vid_writer.write(color)
@@ -197,6 +222,11 @@ def algorithm(model, profile):
         print('Left Elbow to Wrist: ', round(np.mean(le_lw), 4))
         print('Right Shoulder to Elbow: ', round(np.mean(rs_re), 4))
         print('Right Elbow to Wrist: ', round(np.mean(re_rw), 4))
+
+        distance_file = open("./outcome/distance.txt", "w+")
+        distance_file.write(distances)
+        distance_file.close()
+
         # plt.plot(rs_re)
         # plt.show()
         pass
@@ -205,6 +235,7 @@ if __name__ == '__main__':
     model = SimpleHRNet(48, 17, "./weights/pose_hrnet_w48_384x288.pth")
  
     video = './vid/20190912_115237.bag'
+
 
     # Construct a pipeline which abstracts the device
     pipe = rse.pipeline()
