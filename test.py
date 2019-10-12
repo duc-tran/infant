@@ -236,7 +236,6 @@ if __name__ == '__main__':
  
     video = './vid/20190912_115237.bag'
 
-
     # Construct a pipeline which abstracts the device
     pipe = rse.pipeline()
     # Create a configuration for configuring the pipeline with a non default profile
