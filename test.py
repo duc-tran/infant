@@ -9,8 +9,8 @@ import math
 import matplotlib.pyplot as plt
 
 
-def distance(x1, x2, y1, y2, z1, z2):
-    gap = math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2 + (z1 - z2) ** 2)
+def distance(x1, y1, x2, y2, z1, z2):
+    gap = math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2 + (z2 - z1) ** 2)
     return gap
 
 
@@ -230,6 +230,7 @@ def algorithm(model, profile):
         # plt.plot(rs_re)
         # plt.show()
         pass
+
 
 if __name__ == '__main__':
     model = SimpleHRNet(48, 17, "./weights/pose_hrnet_w48_384x288.pth")
