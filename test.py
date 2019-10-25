@@ -154,7 +154,7 @@ def algorithm(model, profile):
                     if points[4, 2] > confidence:
                         if len(previous_left_wrist) != 0:
                             left_wrist_movement = calc(int(round(points[4, 0], 0)), int(round(points[4, 1], 0)),
-                                                       int(round(previous_left_wrist[0], 0)), int(round(points[0, 1], 0)),
+                                                       int(round(previous_left_wrist[0], 0)), int(round(previous_left_wrist[1], 0)),
                                                        aligned_depth, depth_aligned_intrin, depth_scale)
                             distances += 'left movement from frame' + str(frame_index - 1) + ' to frame ' \
                                          + str(frame_index) + ' ' + str(left_wrist_movement) + 'cm ' + str(points[4, 2]) + '\n'
@@ -195,7 +195,7 @@ def algorithm(model, profile):
                         if len(previous_right_wrist) != 0:
                             right_wrist_movement = calc(int(round(points[5, 0], 0)), int(round(points[5, 1], 0)),
                                                        int(round(previous_right_wrist[0], 0)),
-                                                       int(round(points[0, 1], 0)),
+                                                       int(round(previous_right_wrist[1], 0)),
                                                        aligned_depth, depth_aligned_intrin, depth_scale)
                             distances += 'right movement from frame' + str(frame_index - 1) + ' to frame ' \
                                          + str(frame_index) + ' ' + str(right_wrist_movement) + 'cm ' + str(points[5, 2]) + '\n'
