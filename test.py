@@ -9,22 +9,23 @@ import math
 import matplotlib.pyplot as plt
 
 
+# This get the distance in meters, we multiply by 100 to get cm
 def distance(x1, y1, x2, y2, z1, z2):
-    gap = math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2 + (z2 - z1) ** 2)
-    return gap
+    return math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2 + (z2 - z1) ** 2)
 
 
 def calc(x0, y0, x1, y1, aligned_depth, depth_aligned_intrin, depth_scale):
-    pixel_x = [x0, y0]
-    pixel_y = [x1, y1]
-    depth_x = aligned_depth[x0, y0]
-    depth_y = aligned_depth[x1, y1]
-    if (0.0 < depth_x*depth_scale < 0.8) and (0.0 < depth_y*depth_scale < 0.8):
-        x = rse.rs2_deproject_pixel_to_point(depth_aligned_intrin, pixel_x, depth_x*depth_scale)
-        y = rse.rs2_deproject_pixel_to_point(depth_aligned_intrin, pixel_y, depth_y*depth_scale)
-        print(depth_x * depth_scale, x[0], x[1], x[2])
-        print("Length: ", distance(x[0], y[0], x[1], y[1], x[2], y[2]) * 100)
-        return distance(x[0], y[0], x[1], y[1], x[2], y[2]) * 100
+    pixel_1 = [x0, y0]
+    pixel_2 = [x1, y1]
+    depth_1 = aligned_depth[x0, y0]
+    depth_2 = aligned_depth[x1, y1]
+    if (0.0 < depth_1*depth_scale < 0.8) and (0.0 < depth_2*depth_scale < 0.8):
+        point1 = rse.rs2_deproject_pixel_to_point(depth_aligned_intrin, pixel_1, depth_1*depth_scale)
+        point2 = rse.rs2_deproject_pixel_to_point(depth_aligned_intrin, pixel_2, depth_2*depth_scale)
+        length = distance(point1[0], point1[1], point2[0], point2[1], point1[2], point2[2]) * 100
+        print("yo: ", depth_1 * depth_scale, point1[0], point1[1], point1[2])
+        print("Length: ", length)
+        return length
     else:
         return None
 
@@ -98,13 +99,13 @@ def algorithm(model, profile):
                 print('\nFrame number: ', frame_index)
                 frame_index += 1
 
-                # Each joint has 3 values: 2 -> 1 -> 0 (joint confidence, y position, x position)
-                print('Left Shoulder: ', points[0, 2] * 100, points[0, 1], points[0, 0])
-                print('Right Shoulder: ', points[1, 2] * 100, points[1, 1], points[1, 0])
-                print('Left Elbow: ', points[2, 2] * 100, points[2, 1], points[2, 0])
-                print('Right Elbow: ', points[3, 2] * 100, points[3, 1], points[3, 0])
-                print('Left Wrist: ', points[4, 2] * 100, points[4, 1], points[4, 0])
-                print('Right Wrist: ', points[5, 2] * 100, points[5, 1], points[5, 0])
+                # Each joint has 3 values: 0 -> 1 -> 2 (x position, y position, joint confidence)
+                print('Left Shoulder: ', points[0, 0], points[0, 1], points[0, 2] * 100)
+                print('Right Shoulder: ', points[1, 0], points[1, 1], points[1, 2] * 100)
+                print('Left Elbow: ', points[2, 0], points[2, 1], points[2, 2] * 100)
+                print('Right Elbow: ', points[3, 0], points[3, 1], points[3, 2] * 100)
+                print('Left Wrist: ', points[4, 0], points[4, 1], points[4, 2] * 100)
+                print('Right Wrist: ', points[5, 0], points[5, 1], points[5, 2] * 100)
 
                 if index == 0:
                     count = count + 1
@@ -235,7 +236,7 @@ def algorithm(model, profile):
 if __name__ == '__main__':
     model = SimpleHRNet(48, 17, "./weights/pose_hrnet_w48_384x288.pth")
  
-    video = './vid/20190912_115237.bag'
+    video = './vid/20190912_120125.bag'
 
     # Construct a pipeline which abstracts the device
     pipe = rse.pipeline()
