@@ -82,6 +82,7 @@ def algorithm(model, profile):
             # Color frame is in RGB but openCV is using BGR, so we convert it
             color = cv2.cvtColor(color, cv2.COLOR_RGB2BGR)
 
+            # begin of drawing skeleton by HRnet
             joints = model.predict(color)
 
             for index, points in enumerate(joints):
@@ -201,6 +202,8 @@ def algorithm(model, profile):
                                          + str(frame_index) + ' ' + str(right_wrist_movement) + 'cm ' + str(points[5, 2]) + '\n'
                         previous_right_wrist = points[5, :]
                         print('previous right wrist: ', previous_right_wrist)
+
+                        # end of drawing skeleton by HRnet
 
             cv2.imshow('Output Frame', color)
             cv2.waitKey(1) & 0xFF
