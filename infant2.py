@@ -1,15 +1,12 @@
-import pyrealsense2 as rse
-
-from SimpleHRNet import SimpleHRNet
-from misc.utils import draw_points_and_skeleton, joints_dict, draw_points
+import io
+import math
 
 import cv2
 import numpy as np
-import math
-import matplotlib.pyplot as plt
-import csv
-import io
-import time
+import pyrealsense2 as rse
+
+from SimpleHRNet import SimpleHRNet
+from misc.utils import draw_points_and_skeleton, joints_dict
 
 coordinates = ''
 
@@ -106,7 +103,6 @@ def algorithm(model, profile):
             color_frame = frames.get_color_frame()
             frame_timestamp = color_frame.get_timestamp()
             if frame_timestamp not in frame_timestamp_array:
-
                 frames_array.append(color_frame)
                 frame_timestamp_array.append(frame_timestamp)
 
