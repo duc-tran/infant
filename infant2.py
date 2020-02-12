@@ -8,7 +8,8 @@ import pyrealsense2 as rse
 from SimpleHRNet import SimpleHRNet
 from misc.utils import draw_points_and_skeleton, joints_dict
 
-coordinates = ''
+meter_coordinates = ''
+point_coordinates = ''
 
 
 # Using Euclidean distance formula
@@ -16,36 +17,44 @@ def distance(x1, y1, x2, y2, z1, z2):
     return math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2 + (z2 - z1) ** 2)
 
 
-def calc(x0, y0, x1, y1, aligned_depth, depth_aligned_intrin, depth_scale, frame_name, write_to_file):
-    global coordinates
+def calc(x0, y0, x1, y1, aligned_depth, frame_intrin, frame_name, write_to_file, depth_scale):
+    global meter_coordinates
+    global point_coordinates
     pixel_1 = [x0, y0]
     pixel_2 = [x1, y1]
     depth_1 = aligned_depth[x0, y0]
     depth_2 = aligned_depth[x1, y1]
+    # depth * depth scale = physical distance between the camera and the baby
     phys_depth_1 = depth_1 * depth_scale
     phys_depth_2 = depth_2 * depth_scale
-    # depth * depth scale = physical distance between the camera and the baby
+
+    # Getting depth using this API return wrong value, no idea why
+    # phys_depth_1 = depth_frame.get_distance(pixel_1[0], pixel_1[1])
+    # phys_depth_2 = depth_frame.get_distance(pixel_2[0], pixel_2[1])
     # if it is negative then it is incorrect because it means the baby is behind the camera
     # 1 is the expected furthest distance between the baby and the camera, this might be vary each time we record
-    if (0.0 < phys_depth_1 < 1) and (0.0 < phys_depth_2 < 1):
-        point1 = rse.rs2_deproject_pixel_to_point(depth_aligned_intrin, pixel_1, phys_depth_1)
-        point2 = rse.rs2_deproject_pixel_to_point(depth_aligned_intrin, pixel_2, phys_depth_2)
+    if (0.0 < phys_depth_1 < 1.2) and (0.0 < phys_depth_2 < 1.2):
+        point1 = rse.rs2_deproject_pixel_to_point(frame_intrin, pixel_1, phys_depth_1)
+        point2 = rse.rs2_deproject_pixel_to_point(frame_intrin, pixel_2, phys_depth_2)
         # This get the distance in meters, we multiply by 100 to get cm
         length = distance(point1[0], point1[1], point2[0], point2[1], point1[2], point2[2]) * 100
         if write_to_file:
-            print("get to this: ", frame_name)
-            if frame_name not in coordinates:
-                coordinates += '\n' + str(frame_name) + ',' + str(point1[0]) + ',' + str(point1[1]) + ',' \
-                               + str(point1[2]) + ',' + str(point2[0]) + ',' + str(point2[1]) + ',' + str(point2[2])
+            if frame_name not in meter_coordinates:
+                meter_coordinates += '\n' + str(frame_name) + ',' + str(point1[0]) + ',' + str(point1[1]) + ',' \
+                                     + str(point1[2]) + ',' + str(point2[0]) + ',' + str(point2[1]) + ',' + str(point2[2])
+                point_coordinates += '\n' + str(frame_name) + ',' + str(x0) + ',' + str(y0) + ',' \
+                                     + str(depth_1) + ',' + str(x1) + ',' + str(y1) + ',' + str(depth_2)
             else:
-                coordinates += ',' + str(point2[0]) + ',' + str(point2[1]) + ',' + str(point2[2])
+                meter_coordinates += ',' + str(point2[0]) + ',' + str(point2[1]) + ',' + str(point2[2])
+                point_coordinates += ',' + str(x1) + ',' + str(y1) + ',' + str(depth_2)
         return length
     else:
         return None
 
 
-def algorithm(model, profile):
-    global coordinates
+def algorithm(model, profile, used_file):
+    global meter_coordinates
+    global point_coordinates
     vid_writer = cv2.VideoWriter('./outcome/cute_baby02.avi', cv2.VideoWriter_fourcc(*'XVID'), 30, (640, 480))
 
     # Threshold confidence, only use predicted joints with confidence higher than this
@@ -86,8 +95,10 @@ def algorithm(model, profile):
     previous_right_wrist = []
     distances = ''
 
-    coordinates += '\n' + 'Processed File : 20191030_134157.bag' + '\n'
-    coordinates += 'Frame,RS,RS,RS,RE,RE,RE,RW,RW,RW' + '\n' + ' ,x,y,z,x,y,z,x,y,z'
+    meter_coordinates += '\n' + 'Processed File : ' + used_file + '\n'
+    meter_coordinates += 'Frame,RS,RS,RS,RE,RE,RE,RW,RW,RW' + '\n' + ' ,x,y,z,x,y,z,x,y,z'
+    point_coordinates += '\n' + 'Processed File : ' + used_file + '\n'
+    point_coordinates += 'Frame,RS,RS,RS,RE,RE,RE,RW,RW,RW' + '\n' + ' ,x,y,z,x,y,z,x,y,z'
     frame_index = 0
     align_fs = rse.align(rse.stream.depth)
     depth_sensor = profile.get_device().first_depth_sensor()
@@ -106,6 +117,7 @@ def algorithm(model, profile):
                 frames_array.append(color_frame)
                 frame_timestamp_array.append(frame_timestamp)
 
+            print('\nFrame number: ', len(frames_array))
             playback.resume()
 
     except RuntimeError:
@@ -119,6 +131,8 @@ def algorithm(model, profile):
 
     finally:
         pass
+
+    depth_scale = depth_sensor.get_depth_scale()
 
     try:
         for color_frame in frames_array:
@@ -144,7 +158,7 @@ def algorithm(model, profile):
                                                  joints_color_palette='gist_rainbow', skeleton_color_palette='jet',
                                                  joints_palette_samples=1)
 
-                # print('\nFrame number: ', frame_index)
+                print('\nFrame number: ', frame_index)
 
                 # Each joint has 3 values: 0 -> 1 -> 2 (x position, y position, joint confidence)
                 print('Left Shoulder: ', points[0, 0], points[0, 1], points[0, 2] * 100)
@@ -168,7 +182,10 @@ def algorithm(model, profile):
 
                     aligned_depth = np.asanyarray(aligned_depth_frame.get_data())
 
-                    depth_aligned_intrin = aligned_depth_frame.profile.as_video_stream_profile().intrinsics
+                    # Depth
+                    # frame_intrin = aligned_depth_frame.profile.as_video_stream_profile().intrinsics
+                    # Color
+                    frame_intrin = color_frame.profile.as_video_stream_profile().intrinsics
 
                     # If Algorithm's confidence is higher than confidence threshold then calculate joint's position
                     # based on that point
@@ -176,10 +193,10 @@ def algorithm(model, profile):
                     # if (int(round(pt[0, 0], 0)) < p[0]) and (int(round(pt[0, 1], 0)) < p[1])
                     # and (int(round(pt[2, 0], 0)) < p[0]) and (int(round(pt[2, 1], 0)) < p[1]):
                     if (points[0, 2] > confidence) and (points[2, 2] > confidence):
-                        # print("Left Shoulder to Left Elbow length: ")
+                        print("Left Shoulder to Left Elbow length: ")
                         length = calc(int(round(points[0, 0], 0)), int(round(points[0, 1], 0)),
                                       int(round(points[2, 0], 0)), int(round(points[2, 1], 0)),
-                                      aligned_depth, depth_aligned_intrin, depth_scale, '', False)
+                                      aligned_depth, frame_intrin, '', False, depth_scale)
 
                         if (length != None):
                             ls_le.append(length)
@@ -190,7 +207,7 @@ def algorithm(model, profile):
                         if points[2, 2] > confidence:
                             length = calc(int(round(points[2, 0], 0)), int(round(points[2, 1], 0)),
                                           int(round(points[4, 0], 0)), int(round(points[4, 1], 0)),
-                                          aligned_depth, depth_aligned_intrin, depth_scale, '', False)
+                                          aligned_depth, frame_intrin, '', False, depth_scale)
 
                             if (length != None):
                                 le_lw.append(length)
@@ -199,7 +216,8 @@ def algorithm(model, profile):
                             left_wrist_movement = calc(int(round(points[4, 0], 0)), int(round(points[4, 1], 0)),
                                                        int(round(previous_left_wrist[0], 0)),
                                                        int(round(previous_left_wrist[1], 0)),
-                                                       aligned_depth, depth_aligned_intrin, depth_scale, '', False)
+                                                       aligned_depth, frame_intrin, '', False,
+                                                       depth_scale)
                             distances += 'left movement from frame' + str(frame_index - 1) + ' to frame ' \
                                          + str(frame_index) + ' ' + str(left_wrist_movement) + 'cm ' + str(
                                 points[4, 2]) + '\n'
@@ -208,10 +226,10 @@ def algorithm(model, profile):
                     # if (int(round(pt[1, 0], 0) < p[0])) and (int(round(pt[1, 1], 0)) < p[1])
                     # and (int(round(pt[3, 0], 0)) < p[0]) and (int(round(pt[3, 1], 0)) < p[1]):
                     if (points[1, 2] > confidence) and (points[3, 2] > confidence):
-                        # print("Right Shoulder to Right Elbow length: ")
+                        print("Right Shoulder to Right Elbow length: ")
                         length = calc(int(round(points[1, 0], 0)), int(round(points[1, 1], 0)),
                                       int(round(points[3, 0], 0)), int(round(points[3, 1], 0)),
-                                      aligned_depth, depth_aligned_intrin, depth_scale, frame_name, True)
+                                      aligned_depth, frame_intrin, frame_name, True, depth_scale)
 
                         if (length != None):
                             rs_re.append(length)
@@ -220,11 +238,10 @@ def algorithm(model, profile):
                     # and (int(round(pt[5, 0], 0)) < p[0]) and (int(round(pt[5, 1], 0)) < p[1]):
                     if points[5, 2] > confidence:
                         if points[3, 2] > confidence:
-                            # print("Right Elbow to Right Wrist length: ")
+                            print("Right Elbow to Right Wrist length: ")
                             length = calc(int(round(points[3, 0], 0)), int(round(points[3, 1], 0)),
                                           int(round(points[5, 0], 0)), int(round(points[5, 1], 0)),
-                                          aligned_depth, depth_aligned_intrin, depth_scale, frame_name,
-                                          True)
+                                          aligned_depth, frame_intrin, frame_name, True, depth_scale)
 
                             if (length != None):
                                 re_rw.append(length)
@@ -239,8 +256,8 @@ def algorithm(model, profile):
                         if len(previous_right_wrist) != 0:
                             right_wrist_movement = calc(int(round(points[5, 0], 0)), int(round(points[5, 1], 0)),
                                                         int(round(previous_right_wrist[0], 0)),
-                                                        int(round(previous_right_wrist[1], 0)),
-                                                        aligned_depth, depth_aligned_intrin, depth_scale, '', False)
+                                                        int(round(previous_right_wrist[1], 0)), aligned_depth,
+                                                        frame_intrin, '', False, depth_scale)
                             distances += 'right movement from frame ' + str(frame_index - 1) + ' to frame ' \
                                          + str(frame_index) + ' ' + str(right_wrist_movement) + 'cm ' + str(
                                 points[5, 2]) + '\n'
@@ -252,17 +269,30 @@ def algorithm(model, profile):
             cv2.imshow('Output Frame', color)
             cv2.waitKey(1) & 0xFF
             vid_writer.write(color)
-    except RuntimeError:
-        print("There are no more frames left in the .bag file! 2")
+    except RuntimeError as exception:
+        print(exception)
     finally:
-        coordinates_file = open("./outcome/coordinators3_conf03_2.txt", "w+")
-        coordinates_file.write(coordinates)
-        coordinates_file.close()
+        print('Left Shoulder to Elbow: ', round(np.mean(ls_le), 4))
+        print('Left Elbow to Wrist: ', round(np.mean(le_lw), 4))
+        print('Right Shoulder to Elbow: ', round(np.mean(rs_re), 4))
+        print('Right Elbow to Wrist: ', round(np.mean(re_rw), 4))
 
-        coordinates += '\n' + 'Total processed frames: ' + str(frame_index)
+        meter_coordinates += '\n' + 'Total processed frames: ' + str(frame_index)
+        meter_coordinates += '\n' + 'Left Shoulder to Elbow: ' + str(round(np.mean(ls_le), 4))
+        meter_coordinates += '\n' + 'Left Elbow to Wrist: ' + str(round(np.mean(le_lw), 4))
+        meter_coordinates += '\n' + 'Right Shoulder to Elbow: ' + str(round(np.mean(rs_re), 4))
+        meter_coordinates += '\n' + 'Right Elbow to Wrist: ' + str(round(np.mean(re_rw), 4))
 
-        s = io.StringIO(coordinates)
-        with open('./outcome/coordinators3_conf03.csv', 'w') as f:
+        s = io.StringIO(meter_coordinates)
+        with open('./outcome/co_meter_color_intrin.csv', 'w') as f:
+            for line in s:
+                f.write(line)
+            f.close()
+
+        point_coordinates += '\n' + 'Total processed frames: ' + str(frame_index)
+
+        s = io.StringIO(point_coordinates)
+        with open('./outcome/co_point_color_intrin.csv', 'w') as f:
             for line in s:
                 f.write(line)
             f.close()
@@ -273,7 +303,8 @@ if __name__ == '__main__':
     # Init SimpleHRNet library
     model = SimpleHRNet(48, 17, "./weights/pose_hrnet_w48_384x288.pth")
 
-    video = './vid/20191030_134157.bag'
+    used_file = '20191030_134157.bag'
+    video = './vid/' + used_file
 
     # Construct a pipeline which abstracts the device
     pipe = rse.pipeline()
@@ -285,4 +316,4 @@ if __name__ == '__main__':
     playback = profile.get_device().as_playback()
     playback.set_real_time(False)
 
-    algorithm(model, profile)
+    algorithm(model, profile, used_file)

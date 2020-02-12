@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import csv
 import io
 
-coordinates = ''
+meter_coordinates = ''
 
 
 # Using Euclidean distance formula
@@ -19,7 +19,7 @@ def distance(x1, y1, x2, y2, z1, z2):
 
 
 def calc(x0, y0, x1, y1, aligned_depth, depth_aligned_intrin, depth_scale, frame_name, write_to_file):
-    global coordinates
+    global meter_coordinates
     pixel_1 = [x0, y0]
     pixel_2 = [x1, y1]
     depth_1 = aligned_depth[x0, y0]
@@ -46,7 +46,7 @@ def calc(x0, y0, x1, y1, aligned_depth, depth_aligned_intrin, depth_scale, frame
 
 
 def algorithm(model, profile):
-    global coordinates
+    global meter_coordinates
     # vid_writer = cv2.VideoWriter('./outcome/cute_baby02.avi', cv2.VideoWriter_fourcc(*'XVID'), 30, (640, 480))
 
     # Threshold confidence, only use predicted joints with confidence higher than this
@@ -97,9 +97,9 @@ def algorithm(model, profile):
     depth_scale = depth_sensor.get_depth_scale()
     try:
         while True:
-            frame_name = 'Frame ' + str(frame_index)
-            print(frame_name)
-            frames = pipe.try_wait_for_frames()
+           frame_name = 'Frame ' + str(frame_index)
+           print(frame_name)
+           frames = pipe.try_wait_for_frames()
             if frames:
                 frame_index += 1
             # color_frame = frames.get_color_frame()
