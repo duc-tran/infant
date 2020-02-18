@@ -9,7 +9,6 @@ from SimpleHRNet import SimpleHRNet
 from misc.utils import draw_points_and_skeleton, joints_dict
 
 meter_coordinates = ''
-point_coordinates = ''
 
 
 # Using Euclidean distance formula
@@ -19,7 +18,6 @@ def distance(x1, y1, x2, y2, z1, z2):
 
 def calc(x0, y0, x1, y1, aligned_depth, frame_intrin, frame_name, write_to_file, depth_scale):
     global meter_coordinates
-    global point_coordinates
     pixel_1 = [x0, y0]
     pixel_2 = [x1, y1]
     depth_1 = aligned_depth[x0, y0]
@@ -42,11 +40,8 @@ def calc(x0, y0, x1, y1, aligned_depth, frame_intrin, frame_name, write_to_file,
             if frame_name not in meter_coordinates:
                 meter_coordinates += '\n' + str(frame_name) + ',' + str(point1[0]) + ',' + str(point1[1]) + ',' \
                                      + str(point1[2]) + ',' + str(point2[0]) + ',' + str(point2[1]) + ',' + str(point2[2])
-                point_coordinates += '\n' + str(frame_name) + ',' + str(x0) + ',' + str(y0) + ',' \
-                                     + str(depth_1) + ',' + str(x1) + ',' + str(y1) + ',' + str(depth_2)
             else:
                 meter_coordinates += ',' + str(point2[0]) + ',' + str(point2[1]) + ',' + str(point2[2])
-                point_coordinates += ',' + str(x1) + ',' + str(y1) + ',' + str(depth_2)
         return length
     else:
         return None
@@ -54,8 +49,8 @@ def calc(x0, y0, x1, y1, aligned_depth, frame_intrin, frame_name, write_to_file,
 
 def algorithm(model, profile, used_file):
     global meter_coordinates
-    global point_coordinates
-    vid_writer = cv2.VideoWriter('./outcome/cute_baby02.avi', cv2.VideoWriter_fourcc(*'XVID'), 30, (640, 480))
+    output_vid_name = './outcome/' + used_file + '.avi'
+    vid_writer = cv2.VideoWriter(output_vid_name, cv2.VideoWriter_fourcc(*'XVID'), 30, (640, 480))
 
     # Threshold confidence, only use predicted joints with confidence higher than this
     confidence = 0.3
@@ -97,8 +92,6 @@ def algorithm(model, profile, used_file):
 
     meter_coordinates += '\n' + 'Processed File : ' + used_file + '\n'
     meter_coordinates += 'Frame,RS,RS,RS,RE,RE,RE,RW,RW,RW' + '\n' + ' ,x,y,z,x,y,z,x,y,z'
-    point_coordinates += '\n' + 'Processed File : ' + used_file + '\n'
-    point_coordinates += 'Frame,RS,RS,RS,RE,RE,RE,RW,RW,RW' + '\n' + ' ,x,y,z,x,y,z,x,y,z'
     frame_index = 0
     align_fs = rse.align(rse.stream.depth)
     depth_sensor = profile.get_device().first_depth_sensor()
@@ -117,7 +110,6 @@ def algorithm(model, profile, used_file):
                 frames_array.append(color_frame)
                 frame_timestamp_array.append(frame_timestamp)
 
-            print('\nFrame number: ', len(frames_array))
             playback.resume()
 
     except RuntimeError:
@@ -183,9 +175,9 @@ def algorithm(model, profile, used_file):
                     aligned_depth = np.asanyarray(aligned_depth_frame.get_data())
 
                     # Depth
-                    # frame_intrin = aligned_depth_frame.profile.as_video_stream_profile().intrinsics
+                    frame_intrin = aligned_depth_frame.profile.as_video_stream_profile().intrinsics
                     # Color
-                    frame_intrin = color_frame.profile.as_video_stream_profile().intrinsics
+                    # frame_intrin = color_frame.profile.as_video_stream_profile().intrinsics
 
                     # If Algorithm's confidence is higher than confidence threshold then calculate joint's position
                     # based on that point
@@ -277,22 +269,16 @@ def algorithm(model, profile, used_file):
         print('Right Shoulder to Elbow: ', round(np.mean(rs_re), 4))
         print('Right Elbow to Wrist: ', round(np.mean(re_rw), 4))
 
-        meter_coordinates += '\n' + 'Total processed frames: ' + str(frame_index)
-        meter_coordinates += '\n' + 'Left Shoulder to Elbow: ' + str(round(np.mean(ls_le), 4))
-        meter_coordinates += '\n' + 'Left Elbow to Wrist: ' + str(round(np.mean(le_lw), 4))
-        meter_coordinates += '\n' + 'Right Shoulder to Elbow: ' + str(round(np.mean(rs_re), 4))
-        meter_coordinates += '\n' + 'Right Elbow to Wrist: ' + str(round(np.mean(re_rw), 4))
+        summary_report = '\n' + 'Total processed frames: ' + str(frame_index) \
+            + '\n' + 'Left Shoulder to Elbow: ' + str(round(np.mean(ls_le), 4)) \
+            + '\n' + 'Left Elbow to Wrist: ' + str(round(np.mean(le_lw), 4)) \
+            + '\n' + 'Right Shoulder to Elbow: ' + str(round(np.mean(rs_re), 4)) \
+            + '\n' + 'Right Elbow to Wrist: ' + str(round(np.mean(re_rw), 4)) + '\n'
+        meter_coordinates = summary_report + meter_coordinates
 
         s = io.StringIO(meter_coordinates)
-        with open('./outcome/co_meter_color_intrin.csv', 'w') as f:
-            for line in s:
-                f.write(line)
-            f.close()
-
-        point_coordinates += '\n' + 'Total processed frames: ' + str(frame_index)
-
-        s = io.StringIO(point_coordinates)
-        with open('./outcome/co_point_color_intrin.csv', 'w') as f:
+        path = './outcome/' + used_file
+        with open(path  + '_co_meter_color_intrin2.csv', 'w') as f:
             for line in s:
                 f.write(line)
             f.close()
@@ -303,7 +289,7 @@ if __name__ == '__main__':
     # Init SimpleHRNet library
     model = SimpleHRNet(48, 17, "./weights/pose_hrnet_w48_384x288.pth")
 
-    used_file = '20191030_134157.bag'
+    used_file = 'test2_cut.bag'
     video = './vid/' + used_file
 
     # Construct a pipeline which abstracts the device
