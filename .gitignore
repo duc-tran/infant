@@ -35,7 +35,7 @@ MANIFEST
 pip-log.txt
 pip-delete-this-directory.txt
 
-# Unit test / coverage reports
+# Unit turn_table / coverage reports
 htmlcov/
 .tox/
 .coverage
@@ -113,3 +113,6 @@ outcome/
 *.avi
 *.mp4
 *.pth
+/output/
+output/
+./output/

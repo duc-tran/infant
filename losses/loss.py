@@ -20,7 +20,7 @@ def ohkm(loss, topk):
 class JointsMSELoss(nn.Module):
     def __init__(self, use_target_weight=True):
         """
-        MSE loss between output and GT body joints
+        MSE loss between avi and GT body joints
 
         Args:
             use_target_weight (bool): use target weight.
@@ -58,7 +58,7 @@ class JointsMSELoss(nn.Module):
 class JointsOHKMMSELoss(nn.Module):
     def __init__(self, use_target_weight=True, topk=8):
         """
-        MSE loss between output and GT body joints
+        MSE loss between avi and GT body joints
 
         Args:
             use_target_weight (bool): use target weight.

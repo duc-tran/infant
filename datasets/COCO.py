@@ -382,7 +382,7 @@ class COCODataset(Dataset):
                 oks_nmsed_kpts.append([img_kpts[_keep] for _keep in keep])
 
         self._write_coco_keypoint_results(oks_nmsed_kpts, res_file)
-        if 'test' not in self.data_version:
+        if 'turn_table' not in self.data_version:
             info_str = self._do_python_keypoint_eval(res_file)
             name_value = OrderedDict(info_str)
             return name_value, name_value['AP']

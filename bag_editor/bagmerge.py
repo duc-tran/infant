@@ -11,7 +11,7 @@ def parse_args():
     parser = argparse.ArgumentParser(
         prog = 'bagmerge.py',
         description='Merges two bagfiles.')
-    parser.add_argument('-o', type=str, help='name of the output file', 
+    parser.add_argument('-o', type=str, help='name of the avi file',
         default = None, metavar = "output_file")
     parser.add_argument('-t', type=str, help='topics which should be merged to the main bag', 
         default = None, metavar = "topics")
@@ -42,7 +42,7 @@ def merge_bag(main_bagfile, bagfile, outfile = None, topics = None,
     #get min and max time in bagfile
     main_limits = get_limits(main_bagfile)
     limits = get_limits(bagfile)
-    #check output file
+    #check avi file
     if outfile == None:
         pattern = main_bagfile + "_merged_%i.bag"
         outfile = main_bagfile + "_merged.bag"
@@ -50,7 +50,7 @@ def merge_bag(main_bagfile, bagfile, outfile = None, topics = None,
         while (os.path.exists(outfile)):
             outfile = pattern%index
             index += 1
-    #output some information
+    #avi some information
     print "merge bag %s in %s"%(bagfile, main_bagfile)
     print "topics filter: ", topics
     print "writing to %s."%outfile

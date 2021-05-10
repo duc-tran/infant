@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torchvision
+import ffmpeg
 
 
 def joints_dict():
@@ -75,7 +76,7 @@ def draw_points(image, points, color_palette='tab20', palette_samples=16):
         image: image in opencv format
         points: list of points to be drawn.
             Shape: (nof_points, 3)
-            Format: each point should contain (x, y, confidence)
+            Format: each point should contain (y, x, confidence)
         color_palette: name of a matplotlib color palette
             Default: 'tab20'
         palette_samples: number of different colors sampled from the `color_palette`
@@ -112,7 +113,7 @@ def draw_skeleton(image, points, skeleton, color_palette='Set2', palette_samples
         image: image in opencv format
         points: list of points to be drawn.
             Shape: (nof_points, 3)
-            Format: each point should contain (x, y, confidence)
+            Format: each point should contain (y, x, confidence)
         skeleton: list of joints to be drawn
             Shape: (nof_joints, 2)
             Format: each joint should contain (point_a, point_b) where `point_a` and `point_b` are an index in `points`
@@ -156,7 +157,7 @@ def draw_points_and_skeleton(image, points, skeleton, points_color_palette='tab2
         image: image in opencv format
         points: list of points to be drawn.
             Shape: (nof_points, 3)
-            Format: each point should contain (x, y, confidence)
+            Format: each point should contain (y, x, confidence)
         skeleton: list of joints to be drawn
             Shape: (nof_joints, 2)
             Format: each joint should contain (point_a, point_b) where `point_a` and `point_b` are an index in `points`
@@ -250,8 +251,33 @@ def save_images(images, target, joint_target, output, joint_output, joint_visibi
     # Heatmaps
     # ToDo
     # for h in range(0,17):
-    #     heatmap = torchvision.utils.make_grid(output[h].detach(), nrow=int(np.sqrt(output.shape[0])),
+    #     heatmap = torchvision.utils.make_grid(avi[h].detach(), nrow=int(np.sqrt(avi.shape[0])),
     #                                            padding=2, normalize=True, range=(0, 1))
     #     summary_writer.add_image('train_heatmap_%d' % h, heatmap, global_step=step + epoch*len_dl_train)
 
     return grid_gt, grid_pred
+
+
+def check_video_rotation(filename):
+    # thanks to
+    # https://stackoverflow.com/questions/53097092/frame-from-video-is-upside-down-after-extracting/55747773#55747773
+
+    # this returns meta-data of the video file in form of a dictionary
+    meta_dict = ffmpeg.probe(filename)
+
+    # from the dictionary, meta_dict['streams'][0]['tags']['rotate'] is the key
+    # we are looking for
+    rotation_code = None
+    try:
+        if int(meta_dict['streams'][0]['tags']['rotate']) == 90:
+            rotation_code = cv2.ROTATE_90_CLOCKWISE
+        elif int(meta_dict['streams'][0]['tags']['rotate']) == 180:
+            rotation_code = cv2.ROTATE_180
+        elif int(meta_dict['streams'][0]['tags']['rotate']) == 270:
+            rotation_code = cv2.ROTATE_90_COUNTERCLOCKWISE
+        else:
+            raise ValueError
+    except KeyError:
+        pass
+
+    return rotation_code

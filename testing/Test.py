@@ -41,7 +41,7 @@ class Test(object):
         The DataLoader and the loss function are defined.
 
         Args:
-            ds_test (HumanPoseEstimationDataset): test dataset.
+            ds_test (HumanPoseEstimationDataset): turn_table dataset.
             batch_size (int): batch size.
                 Default: 1
             num_workers (int): number of workers for each DataLoader
@@ -112,7 +112,7 @@ class Test(object):
             raise ValueError('checkpoint_path is not defined')
 
         #
-        # load test dataset
+        # load turn_table dataset
         self.dl_test = DataLoader(self.ds_test, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers)
         self.len_dl_test = len(self.dl_test)
 
@@ -158,7 +158,7 @@ class Test(object):
 
     def run(self):
         """
-        Runs the test.
+        Runs the turn_table.
         """
 
         print('\nTest started @ %s' % datetime.now().strftime("%Y-%m-%d %H:%M:%S"))

@@ -1,4 +1,0 @@
-#!/bin/bash
-# provide input bag, and start and end time
-echo $1, $2, $3, $4
-rosbag filter $1 $2_cut.bag "(t.secs==0 and t.nsecs==1) or (t.secs >= $3 and t.secs <= $4)"

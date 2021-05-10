@@ -43,7 +43,7 @@ if __name__ == "__main__":
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    os.makedirs("output", exist_ok=True)
+    os.makedirs("avi", exist_ok=True)
     os.makedirs("checkpoints", exist_ok=True)
 
     # Get data configuration
