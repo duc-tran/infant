@@ -1,0 +1,2 @@
+Run:
+./bag_cutter <path-to-bag-files> <output_file_name> start_time end_time
